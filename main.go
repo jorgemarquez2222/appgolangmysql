@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sync"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -28,19 +29,26 @@ func main() {
 	}
 	defer db.Close()
 
+	var wg sync.WaitGroup
 	http.HandleFunc("/products", func(w http.ResponseWriter, r *http.Request) {
-		products, err := getProductsFromDB(db)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			products, err := getProductsFromDB(db)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(products)
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(products)
+		}()
 	})
 
 	fmt.Println("Server is listening on :8082")
 	log.Fatal(http.ListenAndServe(":8082", nil))
+
+	wg.Wait()
 }
 
 func getProductsFromDB(db *sql.DB) ([]Product, error) {
