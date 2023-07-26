@@ -29,8 +29,8 @@ func main() {
 	}
 	defer db.Close()
 
-	var wg sync.WaitGroup
 	http.HandleFunc("/products", func(w http.ResponseWriter, r *http.Request) {
+		var wg sync.WaitGroup
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -43,12 +43,12 @@ func main() {
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(products)
 		}()
+		wg.Wait()
 	})
 
 	fmt.Println("Server is listening on :8082")
 	log.Fatal(http.ListenAndServe(":8082", nil))
 
-	wg.Wait()
 }
 
 func getProductsFromDB(db *sql.DB) ([]Product, error) {
